@@ -30,7 +30,7 @@ app.view(TASK_BULK_CALLBACK_ID, async ({ ack, view, context, client }) => {
   const raw = values.titles_block.titles_input.value ?? "";
   const titles = raw
     .split("\n")
-    .map((line) => line.trim())
+    .map((line: string) => line.trim())
     .filter(Boolean);
 
   if (titles.length === 0) return;

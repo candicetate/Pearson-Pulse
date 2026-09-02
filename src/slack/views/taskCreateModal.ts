@@ -102,7 +102,7 @@ app.view(TASK_CREATE_CALLBACK_ID, async ({ ack, view, context, client }) => {
   const dueDate = values.due_date_block?.due_date_input.selected_date || null;
   const status = (values.status_block.status_input.selected_option?.value as TaskStatus) || "open";
   const assigneeIds =
-    values.assignees_block?.assignees_input.selected_options?.map((o) => parseInt(o.value, 10)) ?? [];
+    values.assignees_block?.assignees_input.selected_options?.map((o: any) => parseInt(o.value, 10)) ?? [];
 
   const task = await createTask({
     title,
