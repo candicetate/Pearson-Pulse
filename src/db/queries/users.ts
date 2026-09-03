@@ -25,14 +25,10 @@ export async function getUserBySlackId(slackUserId: string): Promise<DbUser | nu
 export async function ensureUser(slackUserId: string, displayName: string): Promise<DbUser> {
   const existing = await getUserBySlackId(slackUserId);
   if (existing) {
-    // Keep the display name fresh in case someone changed it in Slack.
-    if (existing.display_name !== displayName) {
-      const result = await pool.query<DbUser>(
-        "UPDATE users SET display_name = $2 WHERE slack_user_id = $1 RETURNING *",
-        [slackUserId, displayName]
-      );
-      return result.rows[0];
-    }
+    // Deliberately not auto-syncing the name here: it comes from Slack's
+    // slash-command payload (a username handle, not a display name), and
+    // letting the administrator's manual edit in Supabase win is more
+    // useful than overwriting it every time someone runs a command.
     return existing;
   }
 
