@@ -9,9 +9,10 @@ integration, per the revised brief.
 
 - Slack Bolt (TypeScript) for the bot itself
 - Postgres on Supabase for storage
-- An interval-based scheduler (checks every 60 seconds, not a fixed cron
-  entry) that posts the brief when the clock matches the team's configured
-  time
+- An interval-based scheduler (checks immediately at startup and every 60
+  seconds, not a fixed cron entry) that posts once the team's configured time
+  is reached. If the host restarts or briefly sleeps, it catches up later that
+  day instead of silently skipping the brief.
 - Static, hand-written quote and celebration message lists in `src/content/`
 
 ## 1. Create the Slack app

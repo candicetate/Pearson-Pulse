@@ -50,9 +50,24 @@ export async function incrementCompletedCount(): Promise<{ state: DbBotState; sh
   }
 }
 
-export async function markBriefSent(dateStr: string): Promise<void> {
+/** Atomically reserves today's brief so parallel scheduler ticks cannot duplicate it. */
+export async function claimBriefForDate(dateStr: string): Promise<boolean> {
+  const result = await pool.query(
+    `UPDATE bot_state
+     SET last_brief_sent_date = $1, updated_at = now()
+     WHERE id = 1 AND last_brief_sent_date IS DISTINCT FROM $1::date
+     RETURNING id`,
+    [dateStr]
+  );
+  return result.rowCount === 1;
+}
+
+/** Clears a failed reservation so a later scheduler tick can retry. */
+export async function releaseBriefClaim(dateStr: string): Promise<void> {
   await pool.query(
-    "UPDATE bot_state SET last_brief_sent_date = $1, updated_at = now() WHERE id = 1",
+    `UPDATE bot_state
+     SET last_brief_sent_date = NULL, updated_at = now()
+     WHERE id = 1 AND last_brief_sent_date = $1::date`,
     [dateStr]
   );
 }

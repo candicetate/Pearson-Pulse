@@ -1,8 +1,7 @@
 import { App } from "@slack/bolt";
 import { config } from "../config";
 import { getSettings } from "../db/queries/settings";
-import { markBriefSent } from "../db/queries/botState";
-import { getBotState } from "../db/queries/botState";
+import { claimBriefForDate, getBotState, releaseBriefClaim } from "../db/queries/botState";
 import { getCurrentDateInZone, getCurrentTimeInZone } from "../utils/time";
 import { buildBriefGroups } from "../domain/brief";
 import { buildBriefBlocks } from "../slack/messages/briefFormatter";
@@ -16,15 +15,33 @@ import { pickQuote } from "../content/quotes";
  * no redeploy.
  */
 export function startBriefScheduler(app: App): void {
-  setInterval(async () => {
+  let tickInProgress = false;
+
+  const tick = async () => {
+    if (tickInProgress) return;
+    tickInProgress = true;
     try {
       await checkAndSendBrief(app);
     } catch (err) {
       console.error("Brief scheduler tick failed:", err);
+    } finally {
+      tickInProgress = false;
     }
-  }, config.schedulerIntervalMs);
+  };
+
+  void tick();
+  setInterval(() => void tick(), config.schedulerIntervalMs);
 
   console.log(`Brief scheduler started, checking every ${config.schedulerIntervalMs / 1000}s.`);
+}
+
+export function isBriefDue(
+  currentHHMM: string,
+  configuredHHMM: string,
+  today: string,
+  lastSentDate: string | null
+): boolean {
+  return currentHHMM >= configuredHHMM && lastSentDate !== today;
 }
 
 async function checkAndSendBrief(app: App): Promise<void> {
@@ -33,21 +50,23 @@ async function checkAndSendBrief(app: App): Promise<void> {
 
   const nowHHMM = getCurrentTimeInZone(settings.brief_timezone);
   const configuredHHMM = settings.brief_time.slice(0, 5); // "HH:MM:SS" -> "HH:MM"
-  if (nowHHMM !== configuredHHMM) return;
-
   const today = getCurrentDateInZone(settings.brief_timezone);
   const state = await getBotState();
-  if (state.last_brief_sent_date === today) return; // already sent today
+  if (!isBriefDue(nowHHMM, configuredHHMM, today, state.last_brief_sent_date)) return;
+  if (!(await claimBriefForDate(today))) return;
 
-  const groups = await buildBriefGroups(settings.brief_timezone);
-  const { quote } = pickQuote();
-  const blocks = buildBriefBlocks(groups, quote);
+  try {
+    const groups = await buildBriefGroups(settings.brief_timezone);
+    const { quote } = pickQuote();
+    const blocks = buildBriefBlocks(groups, quote);
 
-  await app.client.chat.postMessage({
-    channel: settings.brief_channel_id,
-    text: "Morning brief",
-    blocks,
-  });
-
-  await markBriefSent(today);
+    await app.client.chat.postMessage({
+      channel: settings.brief_channel_id,
+      text: "Morning brief",
+      blocks,
+    });
+  } catch (err) {
+    await releaseBriefClaim(today);
+    throw err;
+  }
 }
