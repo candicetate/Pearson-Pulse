@@ -127,7 +127,11 @@ export async function setTaskStatus(
 
   const result = await pool.query<DbTask>(
     `UPDATE tasks
-     SET status = $2, completed_at = CASE WHEN $2 = 'completed' THEN now() ELSE completed_at END
+     SET status = $2::task_status,
+         completed_at = CASE
+           WHEN $2::task_status = 'completed'::task_status THEN now()
+           ELSE completed_at
+         END
      WHERE id = $1
      RETURNING *`,
     [taskId, status]
