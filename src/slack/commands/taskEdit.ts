@@ -11,7 +11,7 @@ app.command("/task-edit", async ({ ack, body, command, client, respond }) => {
 
   const taskNumber = command.text.trim();
   if (!taskNumber) {
-    await respond({ response_type: "ephemeral", text: "Usage: `/task-edit TASK-001`" });
+    await respond({ response_type: "ephemeral", text: "Usage: `/task-edit TASK-001` (or simply `/task-edit 1`)" });
     return;
   }
 

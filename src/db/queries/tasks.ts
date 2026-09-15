@@ -1,4 +1,5 @@
 import { pool } from "../client";
+import { normalizeTaskNumber } from "../../utils/taskNumber";
 
 export type TaskStatus =
   | "proposed"
@@ -63,9 +64,12 @@ export async function bulkCreateTasks(titles: string[], createdBy: number): Prom
 }
 
 export async function getTaskByNumber(taskNumber: string): Promise<DbTask | null> {
+  const normalizedTaskNumber = normalizeTaskNumber(taskNumber);
+  if (!normalizedTaskNumber) return null;
+
   const result = await pool.query<DbTask>(
     "SELECT * FROM tasks WHERE task_number = $1",
-    [taskNumber.toUpperCase()]
+    [normalizedTaskNumber]
   );
   return result.rows[0] ?? null;
 }
