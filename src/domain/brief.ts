@@ -19,6 +19,16 @@ function addDays(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Places Shannon first in the morning brief and keeps everyone else alphabetical. */
+export function orderBriefGroups(groups: UserBriefGroup[]): UserBriefGroup[] {
+  return [...groups].sort((a, b) => {
+    const aIsShannon = a.user.display_name.trim().toLowerCase() === "shannon";
+    const bIsShannon = b.user.display_name.trim().toLowerCase() === "shannon";
+    if (aIsShannon !== bIsShannon) return aIsShannon ? -1 : 1;
+    return a.user.display_name.localeCompare(b.user.display_name);
+  });
+}
+
 /**
  * Groups every active (non-completed) task by assignee and by bucket
  * (work in progress, waiting on approval, due today, overdue, coming up in
@@ -67,13 +77,15 @@ export async function buildBriefGroups(timezone: string): Promise<UserBriefGroup
     }
   }
 
-  return Array.from(groups.values()).filter(
-    (g) =>
-      g.workInProgress.length ||
-      g.waitingOnApproval.length ||
-      g.dueToday.length ||
-      g.overdue.length ||
-      g.comingUp.length ||
-      g.noDueDate.length
+  return orderBriefGroups(
+    Array.from(groups.values()).filter(
+      (g) =>
+        g.workInProgress.length ||
+        g.waitingOnApproval.length ||
+        g.dueToday.length ||
+        g.overdue.length ||
+        g.comingUp.length ||
+        g.noDueDate.length
+    )
   );
 }
