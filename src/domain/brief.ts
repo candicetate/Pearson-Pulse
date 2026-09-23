@@ -29,6 +29,28 @@ export function orderBriefGroups(groups: UserBriefGroup[]): UserBriefGroup[] {
   });
 }
 
+/** Sorts task references by their numeric portion (TASK-8 before TASK-12). */
+export function orderTasksByNumber(tasks: DbTask[]): DbTask[] {
+  const numberFor = (task: DbTask): number => {
+    const match = task.task_number.match(/(\d+)$/);
+    return match ? Number(match[1]) : task.id;
+  };
+
+  return [...tasks].sort((a, b) => numberFor(a) - numberFor(b));
+}
+
+function orderTasksWithinGroup(group: UserBriefGroup): UserBriefGroup {
+  return {
+    ...group,
+    workInProgress: orderTasksByNumber(group.workInProgress),
+    waitingOnApproval: orderTasksByNumber(group.waitingOnApproval),
+    dueToday: orderTasksByNumber(group.dueToday),
+    overdue: orderTasksByNumber(group.overdue),
+    comingUp: orderTasksByNumber(group.comingUp),
+    noDueDate: orderTasksByNumber(group.noDueDate),
+  };
+}
+
 /**
  * Groups every active (non-completed) task by assignee and by bucket
  * (work in progress, waiting on approval, due today, overdue, coming up in
@@ -86,6 +108,6 @@ export async function buildBriefGroups(timezone: string): Promise<UserBriefGroup
         g.overdue.length ||
         g.comingUp.length ||
         g.noDueDate.length
-    )
+    ).map(orderTasksWithinGroup)
   );
 }
